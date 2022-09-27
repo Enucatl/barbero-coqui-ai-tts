@@ -15,7 +15,6 @@ def speech_to_text(row, client):
     config = speech.RecognitionConfig(
         language_code="it-IT",
         profanity_filter=False,
-        enable_word_time_offsets=True,
         enable_automatic_punctuation=True,
         model="latest_long",
     )

@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 def convert(row):
-    input_file = row["input_file"]
-    output_file = row["output_file"]
+    input_file = row["original_audio"]
+    output_file = row["flac"]
     sound = pydub.AudioSegment.from_mp3(input_file)
     sound = sound.set_channels(1)  # save to mono
     sound.export(output_file, format="flac")
