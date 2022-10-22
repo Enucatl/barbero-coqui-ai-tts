@@ -1,3 +1,5 @@
+*.pkl.gz
+.~lock*
 secrets
 
 # Byte-compiled / optimized / DLL files
