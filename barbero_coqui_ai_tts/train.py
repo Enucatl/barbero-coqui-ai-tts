@@ -6,48 +6,52 @@ import click
 # TrainingArgs: Defines the set of arguments of the Trainer.
 from trainer import Trainer, TrainerArgs
 
-# GlowTTSConfig: all model related values for training, validating and testing.
-from TTS.tts.configs.glow_tts_config import GlowTTSConfig
-
-# BaseDatasetConfig: defines name, formatter and path of the dataset.
 from TTS.tts.configs.shared_configs import BaseDatasetConfig
+from TTS.tts.configs.vits_config import VitsConfig
 from TTS.tts.datasets import load_tts_samples
-from TTS.tts.models.glow_tts import GlowTTS
+from TTS.tts.models.vits import Vits, VitsAudioConfig
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
 from TTS.utils.audio import AudioProcessor
 
 
 @click.command()
-@click.argument("output_path")
-def main(output_path):
+@click.option("--output_path")
+@click.option("--restore_path", default=None)
+def main(output_path, restore_path):
     output_path = pathlib.Path(output_path)
-    # init configs
+
     # DEFINE DATASET CONFIG
-    # Set LJSpeech as our target dataset and define its path.
     # You can also use a simple Dict to define the dataset and pass it to your custom formatter.
     dataset_config = BaseDatasetConfig(
-        name="coqui", meta_file_train="audio_metadata.csv", path=output_path
+        formatter="coqui", meta_file_train="audio_metadata.csv", path=output_path
     )
 
-    # INITIALIZE THE TRAINING CONFIGURATION
-    # Configure the model. Every config class inherits the BaseTTSConfig.
-    config = GlowTTSConfig(
-        batch_size=32,
-        eval_batch_size=16,
-        num_loader_workers=4,
-        num_eval_loader_workers=4,
-        run_eval=True,
-        test_delay_epochs=-1,
+    audio_config = VitsAudioConfig(
+        sample_rate=16000, win_length=1024, hop_length=256, num_mels=80, mel_fmin=0, mel_fmax=None
+    )
+
+    config = VitsConfig(
+        audio=audio_config,
+        batch_group_size=5,
+        batch_size=16,
+        compute_input_seq_cache=True,
+        cudnn_benchmark=False,
+        datasets=[dataset_config],
         epochs=1000,
+        eval_batch_size=8,
+        mixed_precision=True,
+        num_eval_loader_workers=4,
+        num_loader_workers=4,
+        output_path=output_path,
+        phoneme_cache_path=output_path / "phoneme_cache",
+        phoneme_language="it-it",
+        print_eval=True,
+        print_step=25,
+        run_eval=True,
+        run_name="vits_coqui",
+        test_delay_epochs=-1,
         text_cleaner="phoneme_cleaners",
         use_phonemes=True,
-        phoneme_language="it-it",
-        phoneme_cache_path=output_path / "phoneme_cache",
-        print_step=25,
-        print_eval=False,
-        mixed_precision=True,
-        output_path=output_path,
-        datasets=[dataset_config],
     )
 
     # INITIALIZE THE AUDIO PROCESSOR
@@ -57,7 +61,7 @@ def main(output_path):
 
     # INITIALIZE THE TOKENIZER
     # Tokenizer is used to convert text to sequences of token IDs.
-    # If characters are not defined in the config, default characters are passed to the config
+    # config is updated with the default characters if not defined in the config.
     tokenizer, config = TTSTokenizer.init_from_config(config)
 
     # LOAD DATA SAMPLES
@@ -72,20 +76,18 @@ def main(output_path):
         eval_split_size=config.eval_split_size,
     )
 
-    # INITIALIZE THE MODEL
-    # Models take a config object and a speaker manager as input
-    # Config defines the details of the model like the number of layers, the size of the embedding, etc.
-    # Speaker manager is used by multi-speaker models.
-    model = GlowTTS(config, ap, tokenizer, speaker_manager=None)
+    # init model
+    model = Vits(config, ap, tokenizer, speaker_manager=None)
 
-    # INITIALIZE THE TRAINER
-    # Trainer provides a generic API to train all the 🐸TTS models with all its perks like mixed-precision training,
-    # distributed training, etc.
+    # init the trainer and 🚀
     trainer = Trainer(
-        TrainerArgs(), config, output_path, model=model, train_samples=train_samples, eval_samples=eval_samples
+        TrainerArgs(restore_path=restore_path),
+        config,
+        output_path,
+        model=model,
+        train_samples=train_samples,
+        eval_samples=eval_samples,
     )
-
-    # AND... 3,2,1... 🚀
     trainer.fit()
 
 
