@@ -39,7 +39,7 @@ def main(output_path, restore_path):
         datasets=[dataset_config],
         epochs=1000,
         eval_batch_size=8,
-        mixed_precision=True,
+        mixed_precision=False,
         num_eval_loader_workers=4,
         num_loader_workers=4,
         output_path=output_path,
