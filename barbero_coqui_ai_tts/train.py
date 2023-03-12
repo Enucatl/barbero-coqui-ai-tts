@@ -9,7 +9,7 @@ from trainer import Trainer, TrainerArgs
 from TTS.tts.configs.shared_configs import BaseDatasetConfig
 from TTS.tts.configs.vits_config import VitsConfig
 from TTS.tts.datasets import load_tts_samples
-from TTS.tts.models.vits import Vits, VitsAudioConfig
+from TTS.tts.models.vits import Vits, VitsAudioConfig, CharactersConfig
 from TTS.tts.utils.text.tokenizer import TTSTokenizer
 from TTS.utils.audio import AudioProcessor
 
@@ -20,38 +20,64 @@ from TTS.utils.audio import AudioProcessor
 def main(output_path, restore_path):
     output_path = pathlib.Path(output_path)
 
+    language = "it"
+    phonemizer = "gruut"
     # DEFINE DATASET CONFIG
     # You can also use a simple Dict to define the dataset and pass it to your custom formatter.
     dataset_config = BaseDatasetConfig(
-        formatter="coqui", meta_file_train="audio_metadata.csv", path=output_path
+        formatter="coqui",
+        meta_file_train="audio_metadata.csv",
+        path=output_path,
     )
 
     audio_config = VitsAudioConfig(
-        sample_rate=16000, win_length=1024, hop_length=256, num_mels=80, mel_fmin=0, mel_fmax=None
+        sample_rate=16000,
+        win_length=1024,
+        hop_length=256,
+        num_mels=80,
+        mel_fmin=0,
+        mel_fmax=4000,
     )
 
     config = VitsConfig(
         audio=audio_config,
-        batch_group_size=5,
-        batch_size=16,
+        batch_group_size=4,
+        batch_size=8,
         compute_input_seq_cache=True,
         cudnn_benchmark=False,
         datasets=[dataset_config],
-        epochs=1000,
-        eval_batch_size=8,
+        epochs=500,
+        eval_batch_size=4,
         mixed_precision=False,
         num_eval_loader_workers=4,
         num_loader_workers=4,
         output_path=output_path,
         phoneme_cache_path=output_path / "phoneme_cache",
-        phoneme_language="it-it",
+        phoneme_language=language,
+        phonemizer=phonemizer,
         print_eval=True,
         print_step=25,
         run_eval=True,
         run_name="vits_coqui",
         test_delay_epochs=-1,
         text_cleaner="phoneme_cleaners",
-        use_phonemes=True,
+        characters=CharactersConfig(
+            characters_class="TTS.tts.models.vits.VitsCharacters",
+            pad="<PAD>",
+            eos="<EOS>",
+            bos="<BOS>",
+            blank="<BLNK>",
+            characters="!¡'(),-.:;¿?abcdefghijklmnopqrstuvwxyzàáèéìíòóùú",
+            punctuations="!¡'(),-.:;¿? ",
+            phonemes=None,
+        ),
+        use_phonemes=False,
+        test_sentences=[
+            "tutti i leader dell'impero ottomano erano nati cristiani ed erano figli di povera gente",
+            "governo di popolo significa che al vertice del comune c'è una giunta di sei priori",
+            "quello dei suoi figli che riesce a impadronirsi del potere fa uccidere tutti i suoi fratelli",
+            "andiamo a bruciargli la casa!"
+        ],
     )
 
     # INITIALIZE THE AUDIO PROCESSOR
