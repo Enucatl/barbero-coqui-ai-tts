@@ -1,3 +1,5 @@
+*.wav
+*.mp3
 *.pkl.gz
 .~lock*
 secrets
